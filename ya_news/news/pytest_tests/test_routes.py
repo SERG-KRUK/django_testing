@@ -12,7 +12,6 @@ def test_home_availability_for_anonymous_user(client):
     assert response.status_code == HTTPStatus.OK
 
 
-# 
 @pytest.mark.parametrize(
     'name',  # Имя параметра функции.
     # Значения, которые будут передаваться в name.
@@ -21,7 +20,7 @@ def test_home_availability_for_anonymous_user(client):
 # Главная страница доступна анонимному пользователю
 # Страницы регистрации пользователей, входа в учётную запись и выхода из неё
 #  доступны анонимным пользователям.
-@pytest.mark.django_db 
+@pytest.mark.django_db
 def test_pages_availability_for_anonymous_user(client, name):
     url = reverse(name)
     response = client.get(url)

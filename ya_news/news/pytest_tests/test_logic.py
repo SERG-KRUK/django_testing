@@ -92,7 +92,8 @@ def test_comment_without_bad_word_is_saved(client):
 
     client.login(username='testuser', password='testpassword')
 
-    news_item = News.objects.create(title="Test News", text="This is a test news.")
+    news_item = News.objects.create(
+        title="Test News", text="This is a test news.")
 
     comment_data = {
         'text': 'Это хороший комментарий.'
@@ -106,6 +107,7 @@ def test_comment_without_bad_word_is_saved(client):
     assert Comment.objects.count() == 1
     assert Comment.objects.first().text == 'Это хороший комментарий.'
     assert Comment.objects.first().author == user
+
 
 @pytest.mark.django_db
 def test_comment_form_validation_with_bad_word():

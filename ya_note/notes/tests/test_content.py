@@ -14,16 +14,16 @@ class NoteViewTests(TestCase):
     def setUp(self):
         self.user1 = User.objects.create_user(
             username='user1', password='password1')
-        
+
         self.user2 = User.objects.create_user(
             username='user2', password='password2')
-        
+
         self.note1 = Note.objects.create(
             author=self.user1, title='Note 1', text='Content for note 1')
-        
+
         self.note2 = Note.objects.create(
             author=self.user1, title='Note 2', text='Content for note 2')
-        
+
         self.note3 = Note.objects.create(
             author=self.user2, title='Note 3', text='Content for note 3')
 
@@ -31,7 +31,7 @@ class NoteViewTests(TestCase):
         """Проверка, что отдельная заметка передается в контексте."""
         self.client.login(username='user1', password='password1')
         response = self.client.get(reverse('notes:list'))
-        
+
         self.assertEqual(response.status_code, 200)
         self.assertIn('object_list', response.context)
         self.assertEqual(len(response.context['object_list']), 2)
@@ -43,7 +43,7 @@ class NoteViewTests(TestCase):
         """Проверка, что на странице создания заметки передается форма."""
         self.client.login(username='user1', password='password1')
         response = self.client.get(reverse('notes:add'))
-        
+
         self.assertEqual(response.status_code, 200)
         self.assertIn('form', response.context)
         self.assertIsInstance(response.context['form'], NoteForm)
@@ -53,7 +53,7 @@ class NoteViewTests(TestCase):
         self.client.login(username='user1', password='password1')
         response = self.client.get(
             reverse('notes:edit', args=[self.note1.slug]))
-        
+
         self.assertEqual(response.status_code, 200)
         self.assertIn('form', response.context)
         self.assertIsInstance(response.context['form'], NoteForm)
@@ -63,6 +63,5 @@ class NoteViewTests(TestCase):
         self.client.login(username='user1', password='password1')
         response = self.client.get(
             reverse('notes:edit', args=[self.note3.slug]))
-        
-        self.assertEqual(response.status_code, 404)
 
+        self.assertEqual(response.status_code, 404)

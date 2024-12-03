@@ -1,12 +1,12 @@
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
-from notes.forms import NoteForm
+
 from notes.models import Note
 from pytils.translit import slugify
 
 
-User  = get_user_model()
+User = get_user_model()
 
 
 class TestNoteCreation(TestCase):
@@ -17,17 +17,19 @@ class TestNoteCreation(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.user1 = User.objects.create_user(username='testuser1', password='testpassword1')
-        cls.user2 = User.objects.create_user(username='testuser2', password='testpassword2')
-        
+        cls.user1 = User.objects.create_user(
+            username='testuser1', password='testpassword1')
+        cls.user2 = User.objects.create_user(
+            username='testuser2', password='testpassword2')
+
         cls.auth_client1 = Client()
         cls.auth_client1.force_login(cls.user1)
-        
+
         cls.auth_client2 = Client()
         cls.auth_client2.force_login(cls.user2)
 
         cls.url = reverse('notes:add')
-        
+
         cls.existing_note = Note.objects.create(
             title='заметка',
             text='Текст заметки',
