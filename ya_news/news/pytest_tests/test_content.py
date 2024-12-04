@@ -1,86 +1,79 @@
+import http
+
 import pytest
-from django.utils import timezone
-from datetime import timedelta
 
-from django.urls import reverse
 from news.forms import CommentForm
-from news.models import News, Comment
+from news.models import Comment
+
+pytestmark = pytest.mark.django_db
 
 
+@pytest.fixture(autouse=True)
+def enable_db_access_for_all_tests(db):
+    pass
+
+
+@pytest.mark.parametrize('url', [
+    pytest.lazy_fixture('news_home_url'),
+])
 # Количество новостей на главной странице — не более 10.
-@pytest.mark.django_db
-def test_news_limit_on_homepage(client):
-    for i in range(15):
-        News.objects.create(title=f'News {i}', text='text')
-
-    response = client.get(reverse('news:home'))
-    assert response.status_code == 200
-    assert len(response.context['object_list']) <= 10
+def test_news_limit_on_homepage(client, url, news_per_page, news_page_create):
+    news_page_create
+    response = client.get(url)
+    assert response.status_code == http.HTTPStatus.OK
+    assert len(response.context['object_list']) <= news_per_page
 
 
-# Новости отсортированы от самой свежей к самой старой.
-#  Свежие новости в начале списка.
-@pytest.mark.django_db
-def test_news_order_on_homepage(client):
-    fresh_news = News.objects.create(
-        title='Fresh News', text='Fresh news content',
-        date=timezone.now())
+@pytest.mark.parametrize('url', [
+    pytest.lazy_fixture('news_home_url'),
+])
+def test_news_order_on_homepage(client, url, test_news_order):
+    news_list = list(test_news_order)
 
-    older_news = News.objects.create(
-        title='Older News', text='Older news content',
-        date=timezone.now() - timedelta(days=1))
+    response = client.get(url)
 
-    oldest_news = News.objects.create(
-        title='Oldest News', text='Oldest news content',
-        date=timezone.now() - timedelta(days=2))
+    assert response.status_code == http.HTTPStatus.OK
+    returned_news_list = response.context['object_list']
 
-    response = client.get(reverse('news:home'))
+    assert len(returned_news_list) == len(news_list)
 
-    assert response.status_code == 200
-    news_list = response.context['object_list']
-    assert list(news_list) == [fresh_news, older_news, oldest_news]
+    for i in range(len(returned_news_list) - 1):
+        assert returned_news_list[i].date >= returned_news_list[i + 1].date, \
+            (f"News item {returned_news_list[i]} должен быть более свежим, "
+             f"чем {returned_news_list[i + 1]}.")
 
 
-# Комментарии на странице отдельной новости отсортированы
-#  в хронологическом порядке: старые в начале списка, новые — в конце.
-@pytest.mark.django_db
-def test_comments_order_on_news_page(client, author):
-    news_item = News.objects.create(
-        title='Sample News', text='Sample news content', date=timezone.now())
+@pytest.mark.parametrize('url', [
+    pytest.lazy_fixture('news_detail_url'),
+])
+def test_comments_order_on_news_page(client, create_comments, url):
+    news_item = create_comments
 
-    first_comment = Comment.objects.create(
-        news=news_item, text='First comment',
-        author=author, created=timezone.now() - timedelta(days=2))
+    response = client.get(url)
 
-    second_comment = Comment.objects.create(
-        news=news_item, text='Second comment',
-        author=author, created=timezone.now() - timedelta(days=1))
-
-    third_comment = Comment.objects.create(
-        news=news_item, text='Third comment',
-        author=author, created=timezone.now())
-
-    response = client.get(reverse('news:detail', args=[news_item.id]))
-
-    assert response.status_code == 200
+    assert response.status_code == http.HTTPStatus.OK
 
     comments_list = response.context['news'].comment_set.all()
 
-    assert list(comments_list) == [
-        first_comment, second_comment, third_comment]
+    assert list(comments_list) == list(Comment.objects.filter(
+        news=news_item).order_by('created'))
 
 
+@pytest.mark.parametrize('url', [
+    pytest.lazy_fixture('news_detail_url'),
+])
 # Анонимному пользователю недоступна форма для отправки
 #  комментария на странице отдельной новости, а авторизованному доступна.
-def test_comment_form_access_anonim(client):
-    assert 'form' not in client.get('news:detail').context
+def test_comment_form_access_anonim(client, url):
+    assert 'form' not in client.get(url).context
 
 
+@pytest.mark.parametrize('url', [
+    pytest.lazy_fixture('news_detail_url'),
+])
 # а авторизованному доступна.
-@pytest.mark.django_db
-def test_comment_form_access_user(not_author_client, news_fixture):
-    response = not_author_client.get(reverse(
-        'news:detail', args=[news_fixture.id]))
-    assert response.status_code == 200
+def test_comment_form_access_user(not_author_client, news_fixture, url):
+    response = not_author_client.get(url)
+    assert response.status_code == http.HTTPStatus.OK
     assert 'form' in response.context
     assert isinstance(response.context['form'], CommentForm)

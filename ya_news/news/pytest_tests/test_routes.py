@@ -1,41 +1,46 @@
 from http import HTTPStatus
+
 import pytest
 from django.urls import reverse
 from pytest_django.asserts import assertRedirects
 
 
+pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture(autouse=True)
+def enable_db_access_for_all_tests(db):
+    pass
+
+@pytest.mark.parametrize('url', [
+    pytest.lazy_fixture('news_home_url'),
+])
 # Главная страница доступна анонимному пользователю.
-@pytest.mark.django_db
-def test_home_availability_for_anonymous_user(client):
-    url = reverse('news:home')
+def test_home_availability_for_anonymous_user(client, url):
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
 
 
-@pytest.mark.parametrize(
-    'name',  # Имя параметра функции.
-    # Значения, которые будут передаваться в name.
-    ('news:home', 'users:login', 'users:logout', 'users:signup')
-)
+@pytest.mark.parametrize('url', [
+    pytest.lazy_fixture('news_home_url'),
+    pytest.lazy_fixture('signup_url'),
+    pytest.lazy_fixture('login_url'),
+    pytest.lazy_fixture('logout_url'),
+])
 # Главная страница доступна анонимному пользователю
 # Страницы регистрации пользователей, входа в учётную запись и выхода из неё
 #  доступны анонимным пользователям.
-@pytest.mark.django_db
-def test_pages_availability_for_anonymous_user(client, name):
-    url = reverse(name)
+def test_pages_availability_for_anonymous_user(client, url):
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
 
 
-@pytest.mark.parametrize(
-    'name',
-    ('news:detail',)
-)
+@pytest.mark.parametrize('url', [
+    pytest.lazy_fixture('news_detail_url'),
+])
 # Страница отдельной новости доступна анонимному пользователю.
-@pytest.mark.django_db
-def test_detail_pages_availability_for_anonymous_user(client, name,
+def test_detail_pages_availability_for_anonymous_user(client, url,
                                                       news_fixture):
-    url = reverse(name, args=(news_fixture.id,))
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
 
@@ -46,7 +51,6 @@ def test_detail_pages_availability_for_anonymous_user(client, name,
 )
 # При попытке перейти на страницу редактирования или удаления комментария.
 # анонимный пользователь перенаправляется на страницу авторизации.
-@pytest.mark.django_db
 def test_comment_pages_disable_for_anonymous_user(client, name, comment):
     login_url = reverse('users:login')
     url = reverse(name, args=(comment.id,))
