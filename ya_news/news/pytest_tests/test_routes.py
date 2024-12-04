@@ -12,6 +12,7 @@ pytestmark = pytest.mark.django_db
 def enable_db_access_for_all_tests(db):
     pass
 
+
 @pytest.mark.parametrize('url', [
     pytest.lazy_fixture('news_home_url'),
 ])
