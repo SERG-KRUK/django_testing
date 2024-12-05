@@ -98,7 +98,7 @@ def comments_bulk(news, author):
 @pytest.fixture
 def authenticated_client(db, user):
     client = Client()
-    client.login(username=user.username, password='testpassword')
+    client.force_login(user)
     return client
 
 

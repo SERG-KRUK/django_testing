@@ -41,9 +41,6 @@ pytestmark = pytest.mark.django_db
         (DELETE_URL, ANON_CLIENT, HTTPStatus.FOUND),
     )
 )
-# Главная страница, вход, выход, регистрация и страница новости доступны
-# анонимному пользователю. Страницы удаления и редактирования комментария
-# доступны автору и недоступны другому пользователю.
 def test_pages_availability(user_client, url, status):
     """Тест доступности страниц."""
     assert user_client.get(url).status_code == status
