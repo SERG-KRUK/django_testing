@@ -1,13 +1,17 @@
-import http
 import pytest
+import http
 
-from django.contrib.auth.models import User
-from django.urls import reverse
+from pytest_django.asserts import assertFormError
 
+from news.forms import BAD_WORDS, WARNING
 from news.models import Comment
 
 
 pytestmark = pytest.mark.django_db
+
+
+COMMENT = {'text': 'Текст комментария', }
+MODIFIED_COMMENT = {'text': 'Новый текст', }
 
 
 @pytest.fixture(autouse=True)
@@ -17,74 +21,59 @@ def enable_db_access_for_all_tests(db):
 
 # Анонимный пользователь не может отправить комментарий.
 def test_anonymous_user_cannot_submit_comment(
-        client, news_item, comment_data, responce_login_url):
+        client, news_detail_url):
 
-    response = client.post(reverse(
-        'news:detail', args=[news_item.pk]), data=comment_data)
-
+    comments = set(Comment.objects.all())
+    response = client.post(news_detail_url, data=COMMENT)
+    assert set(Comment.objects.all()) == comments
     assert response.status_code == http.HTTPStatus.FOUND
-    assert response.url == responce_login_url
     assert Comment.objects.count() == 0
 
 
 # Авторизованный пользователь может отправить комментарий.
-def test_authenticated_user_can_submit_comment(submit_comment, news_item,
-                                               comment_data):
-    response = submit_comment
+def test_authenticated_user_can_submit_comment(author_client,
+                                               news_detail_url, news, author):
+    comments = set(Comment.objects.all())
+    author_client.post(news_detail_url, data=COMMENT)
+    new_comments = set(Comment.objects.all()) - comments
 
-    assert response.status_code == http.HTTPStatus.FOUND
-    comment = Comment.objects.first()
-    assert comment is not None
-    assert comment.text == comment_data['text']
-    assert comment.news == news_item
-    assert comment.author.username == 'testuser'
+    assert Comment.objects.count() == 1
+    assert len(new_comments) == 1
+    new_comment = new_comments.pop()
+    assert new_comment.news == news
+    assert new_comment.author == author
+    assert new_comment.text == COMMENT['text']
 
 
-BAD_WORDS = (
-    'редиска',
-    'негодяй',
+@pytest.mark.parametrize(
+    'test_data',
+    [{'text': f'Это {word} текст'} for word in BAD_WORDS]
 )
-
-
-def test_comment_with_bad_word_is_not_saved(client, news_item,
-                                            comment_bad_data):
-
-    User.objects.create_user(
-        username='testuser', password='testpassword')
-
-    client.login(username='testuser', password='testpassword')
-
-    response = client.post(
-        reverse('news:detail', args=[news_item.pk]), data=comment_bad_data)
-
-    # Проверяем, что статус ответа не 302 (т.е. комментарий не был принят)
-    assert response.status_code != http.HTTPStatus.FOUND
-
-    # Проверяем, что комментарий не был создан
+# Форма не принимает комментарий с запрещёнными словами.
+def test_form_refuses_bad_words(author_client, news_detail_url, test_data):
+    comments = set(Comment.objects.all())
+    assertFormError(
+        author_client.post(news_detail_url, test_data),
+        'form', 'text', errors=(WARNING))
+    assert set(Comment.objects.all()) == comments
     assert Comment.objects.count() == 0
 
 
 # Авторизованный пользователь может редактировать свои комментарии.
-def test_authenticated_user_can_edit_own_comment(client, comment_edit,
-                                                 comment_update_data):
-    client.login(username='testuser', password='testpassword')
+def test_authenticated_user_can_edit_own_comment(
+        author_client, comment, edit_url):
+    author_client.post(edit_url, data=MODIFIED_COMMENT)
+    attempt_comment = Comment.objects.get(id=comment.id)
 
-    response = client.post(reverse(
-        'news:edit', args=[comment_edit.pk]), data=comment_update_data)
-
-    assert response.status_code == http.HTTPStatus.FOUND
-
-    updated_comment = Comment.objects.get(pk=comment_edit.pk)
-    assert updated_comment.text == comment_update_data['text']
+    assert comment.news == attempt_comment.news
+    assert comment.author == attempt_comment.author
+    assert attempt_comment.text == MODIFIED_COMMENT['text']
 
 
 # Авторизованный пользователь может удалять свои комментарии.
-def test_authenticated_user_can_delete_own_comment(client, comment_edit):
-
-    client.login(username='testuser', password='testpassword')
-
-    response = client.post(reverse('news:delete', args=[comment_edit.pk]))
-
-    assert response.status_code == http.HTTPStatus.FOUND
-
-    assert Comment.objects.count() == 0
+def test_authenticated_user_can_delete_own_comment(
+        author_client, comment, delete_url):
+    comments_count = Comment.objects.all().count()
+    author_client.delete(delete_url)
+    assert comments_count - Comment.objects.all().count() == 1
+    assert not Comment.objects.filter(id=comment.id).exists()

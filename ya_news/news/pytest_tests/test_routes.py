@@ -1,82 +1,61 @@
 from http import HTTPStatus
 
 import pytest
-from django.urls import reverse
 from pytest_django.asserts import assertRedirects
+from pytest_lazyfixture import lazy_fixture
+
+
+# Урлы
+DELETE_URL = lazy_fixture('delete_url')
+EDIT_URL = lazy_fixture('edit_url')
+DELETE_REDIRECT_URL = lazy_fixture('delete_redirect_url')
+NEWS_DETAIL_URL = lazy_fixture('news_detail_url')
+EDIT_REDIRECT_URL = lazy_fixture('edit_redirect_url')
+HOME_URL = lazy_fixture('news_home_url')
+LOGIN_URL = lazy_fixture('login_url')
+LOGOUT_URL = lazy_fixture('logout_url')
+SIGNUP_URL = lazy_fixture('signup_url')
+
+# Клиенты
+ANON_CLIENT = lazy_fixture('client')
+AUTHOR_CLIENT = lazy_fixture('author_client')
+NOT_AUTHOR_CLIENT = lazy_fixture('not_author_client')
 
 
 pytestmark = pytest.mark.django_db
 
 
-@pytest.fixture(autouse=True)
-def enable_db_access_for_all_tests(db):
-    pass
-
-
-@pytest.mark.parametrize('url', [
-    pytest.lazy_fixture('news_home_url'),
-])
-# Главная страница доступна анонимному пользователю.
-def test_home_availability_for_anonymous_user(client, url):
-    response = client.get(url)
-    assert response.status_code == HTTPStatus.OK
-
-
-@pytest.mark.parametrize('url', [
-    pytest.lazy_fixture('news_home_url'),
-    pytest.lazy_fixture('signup_url'),
-    pytest.lazy_fixture('login_url'),
-    pytest.lazy_fixture('logout_url'),
-])
-# Главная страница доступна анонимному пользователю
-# Страницы регистрации пользователей, входа в учётную запись и выхода из неё
-#  доступны анонимным пользователям.
-def test_pages_availability_for_anonymous_user(client, url):
-    response = client.get(url)
-    assert response.status_code == HTTPStatus.OK
-
-
-@pytest.mark.parametrize('url', [
-    pytest.lazy_fixture('news_detail_url'),
-])
-# Страница отдельной новости доступна анонимному пользователю.
-def test_detail_pages_availability_for_anonymous_user(client, url,
-                                                      news_fixture):
-    response = client.get(url)
-    assert response.status_code == HTTPStatus.OK
-
-
 @pytest.mark.parametrize(
-    'name',
-    ('news:edit', 'news:delete'),
-)
-# При попытке перейти на страницу редактирования или удаления комментария.
-# анонимный пользователь перенаправляется на страницу авторизации.
-def test_comment_pages_disable_for_anonymous_user(client, name, comment):
-    login_url = reverse('users:login')
-    url = reverse(name, args=(comment.id,))
-    expected_url = f'{login_url}?next={url}'
-    response = client.get(url)
-    assertRedirects(response, expected_url)
-
-
-@pytest.mark.parametrize(
-    'parametrized_client, expected_status',
+    'url, user_client, status',
     (
-        (pytest.lazy_fixture('not_author_client'), HTTPStatus.NOT_FOUND),
-        (pytest.lazy_fixture('author_client'), HTTPStatus.OK)
-    ),
+        (HOME_URL, ANON_CLIENT, HTTPStatus.OK),
+        (LOGIN_URL, ANON_CLIENT, HTTPStatus.OK),
+        (LOGOUT_URL, ANON_CLIENT, HTTPStatus.OK),
+        (SIGNUP_URL, ANON_CLIENT, HTTPStatus.OK),
+        (NEWS_DETAIL_URL, ANON_CLIENT, HTTPStatus.OK),
+        (EDIT_URL, AUTHOR_CLIENT, HTTPStatus.OK),
+        (DELETE_URL, AUTHOR_CLIENT, HTTPStatus.OK),
+        (EDIT_URL, NOT_AUTHOR_CLIENT, HTTPStatus.NOT_FOUND),
+        (DELETE_URL, NOT_AUTHOR_CLIENT, HTTPStatus.NOT_FOUND),
+        (EDIT_URL, ANON_CLIENT, HTTPStatus.FOUND),
+        (DELETE_URL, ANON_CLIENT, HTTPStatus.FOUND),
+    )
 )
+# Главная страница, вход, выход, регистрация и страница новости доступны
+# анонимному пользователю. Страницы удаления и редактирования комментария
+# доступны автору и недоступны другому пользователю.
+def test_pages_availability(user_client, url, status):
+    """Тест доступности страниц."""
+    assert user_client.get(url).status_code == status
+
+
 @pytest.mark.parametrize(
-    'name',
-    ('news:edit', 'news:delete'),
+    'url, expected_url',
+    [
+        [EDIT_URL, EDIT_REDIRECT_URL],
+        [DELETE_URL, DELETE_REDIRECT_URL],
+    ]
 )
-# Авторизованный пользователь не может зайти на страницы редактирования или
-#  удаления чужих комментариев возвращается 404.
-# Страницы удаления и редактирования комментария доступны автору комментария.
-def test_pages_availability_for_different_users(
-        parametrized_client, name, comment, expected_status
-):
-    url = reverse(name, args=(comment.pk,))
-    response = parametrized_client.get(url)
-    assert response.status_code == expected_status
+def test_edit_delete_pages_redirects(client, url, expected_url):
+    """Страницы удаления, редактирования переадресовывают анонима."""
+    assertRedirects(client.get(url), expected_url)
