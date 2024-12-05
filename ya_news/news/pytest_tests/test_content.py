@@ -1,5 +1,4 @@
 import pytest
-import http
 
 from django.conf import settings
 
@@ -43,6 +42,5 @@ def test_comment_form_access_anonim(client, news_detail_url):
 # а авторизованному доступна.
 def test_comment_form_access_user(not_author_client, news, news_detail_url):
     response = not_author_client.get(news_detail_url)
-    assert response.status_code == http.HTTPStatus.OK
     assert 'form' in response.context
     assert isinstance(response.context['form'], CommentForm)

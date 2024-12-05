@@ -1,11 +1,10 @@
 from datetime import timedelta
+
+import pytest
 from django.conf import settings
-from django.contrib.auth.models import User
 from django.test.client import Client
 from django.urls import reverse
 from django.utils import timezone
-
-import pytest
 
 from news.models import Comment, News
 
@@ -97,9 +96,9 @@ def comments_bulk(news, author):
 
 
 @pytest.fixture
-def authenticated_client(client):
-    User.objects.create_user(username='testuser', password='testpassword')
-    client.login(username='testuser', password='testpassword')
+def authenticated_client(db, user):
+    client = Client()
+    client.login(username=user.username, password='testpassword')
     return client
 
 

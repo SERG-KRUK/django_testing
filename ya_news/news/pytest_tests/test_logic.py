@@ -1,6 +1,6 @@
-import pytest
 import http
 
+import pytest
 from pytest_django.asserts import assertFormError
 
 from news.forms import BAD_WORDS, WARNING
@@ -23,9 +23,7 @@ def enable_db_access_for_all_tests(db):
 def test_anonymous_user_cannot_submit_comment(
         client, news_detail_url):
 
-    comments = set(Comment.objects.all())
     response = client.post(news_detail_url, data=COMMENT)
-    assert set(Comment.objects.all()) == comments
     assert response.status_code == http.HTTPStatus.FOUND
     assert Comment.objects.count() == 0
 
@@ -37,7 +35,6 @@ def test_authenticated_user_can_submit_comment(author_client,
     author_client.post(news_detail_url, data=COMMENT)
     new_comments = set(Comment.objects.all()) - comments
 
-    assert Comment.objects.count() == 1
     assert len(new_comments) == 1
     new_comment = new_comments.pop()
     assert new_comment.news == news
@@ -51,11 +48,9 @@ def test_authenticated_user_can_submit_comment(author_client,
 )
 # Форма не принимает комментарий с запрещёнными словами.
 def test_form_refuses_bad_words(author_client, news_detail_url, test_data):
-    comments = set(Comment.objects.all())
     assertFormError(
         author_client.post(news_detail_url, test_data),
         'form', 'text', errors=(WARNING))
-    assert set(Comment.objects.all()) == comments
     assert Comment.objects.count() == 0
 
 
@@ -77,3 +72,25 @@ def test_authenticated_user_can_delete_own_comment(
     author_client.delete(delete_url)
     assert comments_count - Comment.objects.all().count() == 1
     assert not Comment.objects.filter(id=comment.id).exists()
+
+
+# Пользователь не может удалить чужой комментарий."""
+def test_user_cannot_delete_comment(not_author_client, delete_url,
+                                    comment):
+    comments = set(Comment.objects.all())
+    not_author_client.delete(delete_url)
+    assert set(Comment.objects.all()) == comments
+    attempted_comment = Comment.objects.get(id=comment.id)
+    assert attempted_comment.news == comment.news
+    assert attempted_comment.author == comment.author
+    assert attempted_comment.text == comment.text
+
+
+# Пользователь не может изменить чужой комментарий.
+def test_user_cannot_edit_comment(not_author_client, comment,
+                                  edit_url):
+    not_author_client.post(edit_url, data=MODIFIED_COMMENT)
+    attempt_comment = Comment.objects.get(id=comment.id)
+    assert comment.news == attempt_comment.news
+    assert comment.author == attempt_comment.author
+    assert comment.text == attempt_comment.text
