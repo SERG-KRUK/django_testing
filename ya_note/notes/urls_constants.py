@@ -1,0 +1,12 @@
+APP_NAME = 'notes'
+
+HOME_URL = 'notes:home'
+ADD_NOTE_URL = 'notes:add'
+EDIT_NOTE_URL = 'notes:edit'
+DETAIL_NOTE_URL = 'notes:detail'
+DELETE_NOTE_URL = 'notes:delete'
+NOTES_LIST_URL = 'notes:list'
+SUCCESS_URL = 'notes:success'
+USER_LOGIN = 'users:login'
+USER_LOGOUT = 'users:logout'
+USER_SIGNUP = 'users:signup'
