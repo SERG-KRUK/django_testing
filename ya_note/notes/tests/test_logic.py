@@ -1,7 +1,7 @@
 from pytils.translit import slugify
 
 from notes.models import Note
-from .urls_basetest import ADD_URL, DELETE_URL, EDIT_URL, SLUG, BaseTest
+from .urls_basetest import ADD_URL, DELETE_URL, EDIT_URL, BaseTest
 
 
 class TestNoteCRUD(BaseTest):
