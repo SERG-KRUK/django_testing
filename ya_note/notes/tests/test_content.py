@@ -31,6 +31,6 @@ class TestNotes(BaseTest):
     def test_no_alien_notes_in_users_notes(self):
         """В заметки одного пользователя не попадают заметки другого."""
         self.assertNotIn(
-            self.readers_note,
-            self.client_author.get(LIST_URL).context['object_list']
+            self.note,
+            self.client_reader.get(LIST_URL).context['object_list']
         )

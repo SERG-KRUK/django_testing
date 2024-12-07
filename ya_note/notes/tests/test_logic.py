@@ -27,10 +27,10 @@ class TestNoteCRUD(BaseTest):
 
     def test_creation_with_same_slug(self):
         """Нельзя создать заметки с одинаковым слагом."""
-        notes_before = set(Note.objects.all())
-        self.new_data['slug'] = SLUG
+        notes_before = Note.objects.all()
+        self.new_data['slug'] = notes_before.first().slug
         self.client_author.post(ADD_URL, data=self.new_data,)
-        self.assertEqual(set(Note.objects.all()), notes_before)
+        self.assertEqual(set(Note.objects.all()), set(notes_before))
 
     def test_slugify_slug_matching(self):
         """Сгенерированный слаг заметки идентичен полученному через slugify."""

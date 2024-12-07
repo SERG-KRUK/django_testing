@@ -13,7 +13,7 @@ HOME_URL = reverse('notes:home')
 SIGNUP_URL = reverse('users:signup')
 LOGIN_URL = reverse('users:login')
 LOGOUT_URL = reverse('users:logout')
-SUCCESS_URL = reverse('notes:success', args=None)
+SUCCESS_URL = reverse('notes:success')
 DETAIL_URL = reverse('notes:detail', args=(SLUG,))
 EDIT_REDIRECT_URL = f'{LOGIN_URL}?next={EDIT_URL}'
 DELETE_REDIRECT_URL = f'{LOGIN_URL}?next={DELETE_URL}'
